@@ -29,3 +29,9 @@ def home(request):
     if request.user.is_authenticated:
         return render(request, 'users/home1.html', {'user': request.user.username})
     return render(request, 'users/home2.html')
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import CustomTokenObtainPairSerializer
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
