@@ -28,14 +28,16 @@
 <body>
     <h1>Server Clock</h1>
     <div id="clock">Connecting...</div>
+    <p id="client_count">Connected clients: 0</p>
 
     <script>
         const clockElement = document.getElementById("clock");
+        const clientCountElement = document.getElementById("client_count");
         const socket = new WebSocket("ws://" + window.location.host + "/ws/clock/");
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
-            const timeString = data.message; // Format: "YYYY-MM-DD HH:MM:SS:CC"
+            const timeString = data.message;
             
             // Split the message into date and time components
             const [date, time] = timeString.split(" ");
@@ -46,7 +48,10 @@
             const formattedDate = new Date(date).toLocaleDateString();
 
             // Update the clock element
-            clockElement.innerHTML = `<strong>${formattedDate}</strong><br><span style="font-size: 1.5em;">${formattedTime}</span>`;
+            clockElement.innerHTML = `<strong>${formattedDate}</strong><br><span style="font-size: 1.5em;">${formattedTime}</span><br><span style="font-size: 1em;">Connections: ${data.client_count}</span>`;
+            if (data.client_count !== undefined) {
+                clientCountElement.textContent = `Connected clients: ${data.client_count}`;
+            }
         };
 
         socket.onclose = function() {

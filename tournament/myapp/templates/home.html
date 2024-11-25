@@ -1,17 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Websocket Template</title>
+    <title>Clock</title>
 </head>
 <body>
-    <h1>{{greeting}}</h1>
-    <h1>{{time}}</h1>
-    <script>
-        const socket = new WebSocket('ws://' + window.location.host + '/ws/somepath/');
+    <h1>Current Time</h1>
+    <p id="clock">Connecting...</p>
+    <p id="client-count">Connected clients: 0</p>
 
-        socket.onmessage = function(event) {
+    <script>
+        const clockElement = document.getElementById("clock");
+        const clientCountElement = document.getElementById("client-count");
+        const socket = new WebSocket("ws://" + window.location.host + "/ws/clock/");
+
+        socket.onopen = () => {
+            console.log("WebSocket connection opened!");
+        };
+
+        socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log(data.message);
+            if (data.message) {
+                clockElement.textContent = data.message;  // Update time
+            }
+            if (data.client_count !== undefined) {
+                clientCountElement.textContent = `Connected clients: ${data.client_count}`;  // Update client count
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+            clockElement.textContent = "Error connecting!";
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket connection closed.");
+            clockElement.textContent = "Disconnected.";
         };
     </script>
 </body>
