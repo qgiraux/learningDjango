@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
     libpq-dev \ 
-    redis-server\
+    # redis-server\
     && rm -rf /var/lib/apt/lists/*
 
 # Set up a working directory (used as mount target)
@@ -20,4 +20,4 @@ RUN pip install django-debug-toolbar
 EXPOSE 8000 6379
 
 # Keep the container running
-CMD service redis-server start && tail -f /dev/null
+CMD tail -f /dev/null #service redis-server start && tail -f /dev/null
