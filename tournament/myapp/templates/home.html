@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Websocket Template</title>
+</head>
+<body>
+    <h1>{{greeting}}</h1>
+    <h1>{{time}}</h1>
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/somepath/');
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log(data.message);
+        };
+    </script>
+</body>
+</html>

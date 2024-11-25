@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Clock</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f9;
+            padding-top: 50px;
+        }
+        #clock {
+            font-size: 2em;
+            color: #333;
+            font-weight: bold;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+            margin-top: 20px;
+        }
+        h1 {
+            color: #2C3E50;
+        }
+    </style>
+</head>
+<body>
+    <h1>Server Clock</h1>
+    <div id="clock">Connecting...</div>
+
+    <script>
+        const clockElement = document.getElementById("clock");
+        const socket = new WebSocket("ws://" + window.location.host + "/ws/clock/");
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const timeString = data.message; // Format: "YYYY-MM-DD HH:MM:SS:CC"
+            
+            // Split the message into date and time components
+            const [date, time] = timeString.split(" ");
+            const [hour, minute, second] = time.split(":");
+
+            // Format date and time into a more readable format
+            const formattedTime = `${hour}:${minute}:${second}`;
+            const formattedDate = new Date(date).toLocaleDateString();
+
+            // Update the clock element
+            clockElement.innerHTML = `<strong>${formattedDate}</strong><br><span style="font-size: 1.5em;">${formattedTime}</span>`;
+        };
+
+        socket.onclose = function() {
+            clockElement.innerText = "Disconnected";
+        };
+    </script>
+</body>
+</html>

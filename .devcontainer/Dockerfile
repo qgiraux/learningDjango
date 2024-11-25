@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Set up a working directory (used as mount target)
-WORKDIR /workspace/user_management
+WORKDIR /workspace/tournament
 
 # Install pipenv or pip if needed, based on your environment requirements
 RUN pip install --upgrade pip
