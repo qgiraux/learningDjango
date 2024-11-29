@@ -1,171 +1,45 @@
-https://docs.djangoproject.com/en/5.1/intro/tutorial01/
-https://dev.to/ki3ani/building-out-a-notes-app-with-react-and-a-django-rest-api-part-1-5bc5
-https://docs.djangoproject.com/en/5.1/intro/tutorial01/
+# Transcendence Project
 
+## IV.1 Overview
 
-to start server : daphne -p 8001 tournament.asgi:application
-Certainly! Here's the same information formatted in Markdown:
+### Web
+- **Major Module (1 point):** Use a framework to build the backend. **(Assigned to TLM)**
+- **Minor Module (0.5 points):** Use a framework or toolkit to build the frontend. **(Assigned to JUL, NICO)**
+- **Minor Module (0.5 points):** Use a database for the backend. **(Assigned to NICO)**
+- **Major Module (1 point):** Store the score of a tournament on the blockchain. **(Assigned to JE)**
 
-# WebSocket Clock with 1/100th of a Second Precision
+### User Management
+- **Major Module (1 point):** Standard user management, including authentication and user handling across tournaments. **(Assigned to QUEN)**
+- *Major Module:* Implement remote authentication.
 
-### 1. **Install Required Packages**
-Install **Django Channels** to enable WebSockets in Django:
+### Gameplay and User Experience
+- **Major Module (1 point):** Enable remote players. **(Assigned to QUEN)**
+- **Minor Module (0.5 points):** Game customization options. **(Assigned to JUL)**
+- *Major Module:* Live chat feature.
 
-```bash
-pip install channels
-```
-(Optional, but recommended for production) Install Redis:
-```
-pip install channels_redis
-```
-2. Django Settings
+### AI & Algorithms
+- *Major Module:* Introduce an AI opponent.
+- *Minor Module:* Develop user and game stats dashboards.
 
-Update settings.py to configure Channels:
-```
-INSTALLED_APPS = [
-    ...
-    'channels',  # Add channels here
-]
+### Cybersecurity
+- *Major Module:* Implement Web Application Firewall (WAF) with ModSecurity and hardened configuration, alongside HashiCorp Vault for secrets management.
+- *Minor Module:* Implement GDPR compliance options, including user anonymization, local data management, and account deletion.
+- *Major Module:* Two-Factor Authentication (2FA) and JWT implementation.
 
-ASGI_APPLICATION = 'your_project.asgi.application'
+### DevOps
+- *Major Module:* Infrastructure setup for log management.
+- *Minor Module:* Monitoring system.
+- **Major Module (1 point):** Design the backend as microservices. **(Assigned to TLM)**
 
-# (Optional) Configure Redis for Channels
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('127.0.0.1', 6379)],  # Redis server host and port
-        },
-    },
-}
-```
-3. Configure ASGI File
+### Graphics
+- **Major Module (1 point):** Implement advanced 3D techniques. **(Assigned to JUL)**
 
-Edit asgi.py to route WebSocket connections to the correct consumer:
-```
-import os
-from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.auth import AuthMiddlewareStack
-from your_app import routing  # Import the routing module
+### Accessibility
+- *Minor Module:* Support for multiple languages.
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project.settings')
+### Server-Side Pong
+- **Major Module (1 point):** Replace basic Pong with server-side Pong and implement an API. **(Assigned to QUEN)**
+- **Major Module (1 point):** Enable Pong gameplay via CLI against web users with API integration. **(Assigned to JE)**
 
-application = ProtocolTypeRouter({
-    "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
-        URLRouter(
-            routing.websocket_urlpatterns  # WebSocket URL routing
-        )
-    ),
-})
-```
-4. Define WebSocket Routing
-
-Create routing.py in your app to define WebSocket URL patterns:
-```
-from django.urls import re_path
-from .consumers import ClockConsumer
-
-websocket_urlpatterns = [
-    re_path(r'ws/clock/$', ClockConsumer.as_asgi()),
-]
-```
-5. Create WebSocket Consumer
-
-Create consumers.py to handle the WebSocket connections and send the current time:
-```
-import json
-import asyncio
-from channels.generic.websocket import AsyncWebsocketConsumer
-from datetime import datetime
-
-class ClockConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        await self.accept()  # Accept the WebSocket connection
-        self.send_time_task = asyncio.create_task(self.send_time())  # Start sending time
-
-    async def disconnect(self, close_code):
-        self.send_time_task.cancel()  # Cancel the task when disconnected
-
-    async def send_time(self):
-        while True:
-            now = datetime.now()
-            # Format time as '%Y-%m-%d %H:%M:%S.' and then add 1/100th of a second
-            formatted_time = now.strftime('%Y-%m-%d %H:%M:%S.') + f"{now.microsecond // 10000:02d}"
-            await self.send(text_data=json.dumps({
-                'message': formatted_time  # Send the time as a message
-            }))
-            await asyncio.sleep(0.01)  # Update every 1/100th of a second (10 ms)
-
-    async def receive(self, text_data):
-        pass  # No data received from client
-```
-  Key Changes in send_time Method:
-      strftime('%Y-%m-%d %H:%M:%S.') formats the time.
-      f"{now.microsecond // 10000:02d}" extracts the first two digits of the microseconds for 1/100th of a second.
-      await asyncio.sleep(0.01) ensures updates every 10 milliseconds.
-
-6. Frontend JavaScript for WebSocket
-
-Update the HTML/JavaScript to establish a WebSocket connection and display the time:
-```
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Clock</title>
-</head>
-<body>
-    <h1>Current Time</h1>
-    <p id="clock">Connecting...</p>
-
-    <script>
-        const clockElement = document.getElementById("clock");
-        const socket = new WebSocket("ws://" + window.location.host + "/ws/clock/");
-
-        socket.onopen = () => {
-            console.log("WebSocket connection opened!");
-        };
-
-        socket.onmessage = (event) => {
-            console.log("Received:", event.data);  // Log received data
-            clockElement.textContent = event.data;  // Display the time in the <p> tag
-        };
-
-        socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-            clockElement.textContent = "Error connecting!";
-        };
-
-        socket.onclose = () => {
-            console.log("WebSocket connection closed.");
-            clockElement.textContent = "Disconnected.";
-        };
-    </script>
-</body>
-</html>
-```
-  Important: The new WebSocket() should use window.location.host to dynamically connect to the correct WebSocket server (ws://127.0.0.1:8001/ws/clock/ for local development).
-
-7. Run the Server
-
-Start the Django development server:
-```
-daphne -p 8001 tournament.asgi:application  # Make sure the port matches the one in your WebSocket URL
-```
-8. Testing
-
-    Visit http://127.0.0.1:8001/clock/ in your browser.
-    You should see the clock updating every 1/100th of a second.
-
-Summary of Changes:
-
-    Install Django Channels and configure it in settings.py.
-    Set up asgi.py to handle WebSocket connections.
-    Create WebSocket URL routing in routing.py.
-    Implement the WebSocket consumer in consumers.py to handle time updates.
-    Update the frontend HTML/JavaScript to establish the WebSocket connection and display the time.
-    Start the Django server to serve the WebSocket connection and page.
-
-Now you have a working WebSocket-based clock with 1/100th of a second precision. Let me know if you need further clarifications!
+---
 
