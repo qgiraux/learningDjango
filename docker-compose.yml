@@ -42,10 +42,10 @@ services:
     volumes:
       - ./chat:/workspace/chat
     depends_on:
-      - user_management
       - db_chat
     networks:
       - transcendence
+    init: true
 
   db_chat:
     container_name: db_chat
@@ -73,6 +73,7 @@ services:
       - user_management
     networks:
       - transcendence
+    init: true
 
   db_friends_list:
     container_name: db_friends_list
@@ -108,6 +109,8 @@ services:
       - "5000:443"
     restart: unless-stopped
     init: true
+  
+  
 
 volumes:
   postgres_user_management:

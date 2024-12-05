@@ -6,14 +6,12 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def custom_login_redirect(request):
-    return redirect("http://127.0.0.1:8001/login")
+    return redirect("http://user_management:8000/login")
 @csrf_exempt
 def custom_logout_redirect(request):
-    return redirect("http://127.0.0.1:8001/logout")
+    return redirect("http://user_management:8000/logout")
 
 urlpatterns = [
-    path("", chat_views.chatPage, name="chat-page"),
-
     # login-section
     path("auth/login/", custom_login_redirect, name="login-user"),
     path("auth/logout/", custom_logout_redirect, name="logout-user"),

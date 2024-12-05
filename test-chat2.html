@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #chatBox {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        #messages {
+            max-height: 200px;
+            overflow-y: scroll;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+        }
+        .message {
+            padding: 5px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .sent {
+            background-color: #d0f0c0;
+            text-align: right;
+        }
+        .received {
+            background-color: #f0f0f0;
+        }
+        #inputArea {
+            display: flex;
+            gap: 10px;
+        }
+        #inputArea input {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        #inputArea button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #inputArea button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="chatBox">
+        <h2>WebSocket Chat Test</h2>
+        <div id="messages"></div>
+        <div id="inputArea">
+            <input type="text" id="messageInput" placeholder="Type a message..." />
+            <button id="sendButton">Send</button>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // WebSocket setup
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMzNDEyOTc5LCJpYXQiOjE3MzM0MTI2NzksImp0aSI6IjM3YTBmZTY2OTMyOTRjNTNiMDI2YTc3YzZjNTVlZDFhIiwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJxZ2lyYXV4Iiwibmlja25hbWUiOiJxZ2lyYXV4IiwiaXNfYWRtaW4iOmZhbHNlfQ.ws4jvT-iZEcbZH3O2l-1cN-P1YWH42R4dTRosb2Yj9A";
+        const socketUrl = `https://localhost:5000/ws/chat/?token=${token}`; // Replace with your WebSocket URL
+        let socket;
+
+        // DOM elements
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const messagesContainer = document.getElementById('messages');
+        const statusDiv = document.getElementById('status');
+
+        // Function to update status
+        function updateStatus(status) {
+            statusDiv.textContent = status;
+        }
+
+        // Function to append a message to the chat window
+        function appendMessage(sender, message, type) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            if (type === 'sent') {
+                messageElement.classList.add('sent');
+            } else {
+                messageElement.classList.add('received');
+            }
+
+            // Create sender and message content
+            const senderElement = document.createElement('strong');
+            senderElement.textContent = sender + ": ";
+            const messageText = document.createElement('span');
+            messageText.textContent = message;
+
+            // Append sender and message to the message div
+            messageElement.appendChild(senderElement);
+            messageElement.appendChild(messageText);
+            
+            // Append the message to the message container
+            messagesContainer.appendChild(messageElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the latest message
+        }
+
+        // Connect to the WebSocket server
+        function connectWebSocket() {
+            socket = new WebSocket(socketUrl);
+
+            socket.onopen = function() {
+                updateStatus("Connected to the server!");
+            };
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);  // Expecting { sender: "User", message: "Message text" }
+                appendMessage(data.sender, data.message, 'received');
+            };
+
+            socket.onclose = function() {
+                updateStatus("Disconnected from the server.");
+            };
+
+            socket.onerror = function(error) {
+                updateStatus("Error connecting to the server.");
+            };
+        }
+
+        // Send message to the WebSocket server
+        function sendMessagegame() {
+            const message = messageInput.value;
+            if (message && socket && socket.readyState === WebSocket.OPEN) {
+                const data = {
+                    type: 'game',
+                    message: message
+                };
+                socket.send(JSON.stringify(data));
+                appendMessage("You", message, 'sent');
+                messageInput.value = ''; // Clear input after sending
+            }
+        }
+        function sendMessage() {
+            const message = messageInput.value;
+            if (message && socket && socket.readyState === WebSocket.OPEN) {
+                const data = {
+                    type: 'chat',
+                    message: message
+                };
+                socket.send(JSON.stringify(data));
+                appendMessage("You", message, 'sent');
+                //messageInput.value = ''; // Clear input after sending -->
+            }
+        }
+
+        // Set up the send button click event
+        sendButton.addEventListener('click', function() {
+            sendMessage();
+            sendMessagegame();
+        });
+
+        // Set up the Enter key event
+        messageInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+                sendMessagegame();
+            }
+        });
+
+        // Start WebSocket connection on page load
+        connectWebSocket();
+    </script>
+</body>
+</html>

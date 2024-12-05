@@ -23,9 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-dquen$ta141%61x(1^cf&73(&h+$76*@wbudpia^^ecijswi=q'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'redis',
+    'nginx',
+    'localhost',
+    ]
 
 DEFAULT_RUNSERVER_CLASS = 'daphne.cli.DaphneCommand'
 
@@ -157,11 +161,17 @@ AUTH_USER_MODEL = 'users.CustomUser'
 
 CACHES = {
     'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'my_cache_table',
+    },
+    'redis': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://redis:6379/1',
+        'LOCATION': 'redis://redis:6379/1',  # Replace with your Redis server info
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
+        }
     }
 }
 
+CACHES['default'] = CACHES['redis']
+REDIS_URL = "redis://redis:6379/1"

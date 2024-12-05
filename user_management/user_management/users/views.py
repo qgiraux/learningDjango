@@ -1,6 +1,7 @@
 # Create your views here.
 from .serializers import UserSerializer, CustomTokenObtainPairSerializer, UsernameSerializer
 import json
+import logging
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -17,6 +18,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
@@ -109,3 +111,9 @@ def CheckUserStatus(request, user_id):
     return JsonResponse({"user_id": user_id, "online": online})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def GetAllUsers(request):
+    users = User.objects.all()
+    serializer = UserSerializer(users, many=True)
+    return JsonResponse(serializer.data, safe=False)

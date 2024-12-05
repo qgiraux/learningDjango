@@ -1,52 +1,42 @@
 import json
+import jwt
 import logging
-from django.http import HttpResponse
+from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from .models import Friends
+from django.conf import settings
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.conf import settings
-from django.http import JsonResponse
-import jwt
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.csrf import ensure_csrf_cookie
 
-logger = logging.getLogger(__name__)
 
-@ensure_csrf_cookie
 def get_csrf_token(request):
     return JsonResponse({'csrfToken': request.META.get('CSRF_COOKIE')})
 
-
-# @api_view(['POST'])
+@ensure_csrf_cookie
 @permission_classes([IsAuthenticated])
-def AddFriend(request):
+def add_friend(request):
+    if request.method != 'POST':
+        return JsonResponse({'detail': 'Method not allowed', 'code': 'method_not_allowed'}, status=405)
     try:
         # Extract JSON data from request body
         data = json.loads(request.body)
-        logger.error(f"Request body: {data}")
 
         # Extract and decode the JWT token
         auth_header = request.headers.get('Authorization').split()[1]
         decoded = jwt.decode(auth_header, settings.SECRET_KEY, algorithms=["HS256"])
-        logger.error(f"Decoded token: {decoded}")
 
         # Extract user ID from the decoded token
         user_id = decoded.get('user_id')
         if not user_id:
-            return HttpResponse(
-                json.dumps({'detail': 'User not found', 'code': 'user_not_found'}),
-                status=400,
-                content_type='application/json'
-            )
+            return JsonResponse({'detail': 'User not found', 'code': 'user_not_found'}, status=400)
 
         # Extract friend ID from the request data
         friend_id = data.get('id')
         if not friend_id:
-            return HttpResponse(
-                json.dumps({'detail': 'Friend ID is required', 'code': 'friend_id_required'}),
-                status=400,
-                content_type='application/json'
-            )
+            return JsonResponse({'detail': 'Friend ID is required', 'code': 'friend_id_required'}, status=400)
+        if Friends.objects.filter(user_id=user_id, friend_id=friend_id).exists():
+            return JsonResponse({'message': 'user already in friend list', 'code': 'conflict'}, status=409)
 
         # Create a new friend relationship
         new = Friends()
@@ -56,18 +46,59 @@ def AddFriend(request):
 
         # Prepare response body
         body = json.dumps({'message': 'Friend added successfully'})
-        return HttpResponse(body, status=200, content_type='application/json')
+        return JsonResponse({'message': 'Friend added successfully'}, status=200)
+
+    except ExpiredSignatureError:
+        return JsonResponse({'detail': 'Token has expired', 'code': 'token_expired'}, status=401)
+    except InvalidTokenError:
+        return JsonResponse({'detail': 'Invalid token', 'code': 'invalid_token'}, status=401)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return JsonResponse({'detail': 'An error occurred', 'code': 'error_occurred'}, status=500)
+
+@ensure_csrf_cookie
+@permission_classes([IsAuthenticated])
+def remove_friend(request):
+    if request.method != 'DELETE':
+        return JsonResponse({'detail': 'Method not allowed', 'code': 'method_not_allowed'}, status=405)
+    try:
+        data = json.loads(request.body)
+
+        auth_header = request.headers.get('Authorization').split()[1]
+        decoded = jwt.decode(auth_header, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = decoded.get('user_id')
+        if not user_id:
+            return HttpResponse(
+                json.dumps({'detail': 'User not found', 'code': 'user_not_found'}),
+                status=400,
+                content_type='application/json'
+            )
+
+        friend_id = data.get('id')
+        if not friend_id:
+            return JsonResponse({'detail': 'Friend ID is required', 'code': 'friend_id_required'}, status=400)
+        
+        friend_ids = list(Friends.objects.filter(user_id=user_id, friend_id=friend_id).values_list('friend_id', flat=True))
+        if len(friend_ids) == 0:
+            return JsonResponse({'error': 'user not in friend list', 'code': 'not found'}, status=404)
+        
+        deleted, _ = Friends.objects.filter(user_id=user_id, friend_id=friend_id).delete()
+        if deleted:
+            return JsonResponse({'message': 'Friend removed successfully'}, status=200)
+        else:
+            return JsonResponse({'error': 'Friend not found'}, status=404)
 
     except jwt.ExpiredSignatureError:
         return HttpResponse(
             json.dumps({'detail': 'Token has expired', 'code': 'token_expired'}),
-            status=400,
+            status=401,
             content_type='application/json'
         )
     except jwt.InvalidTokenError:
         return HttpResponse(
             json.dumps({'detail': 'Invalid token', 'code': 'invalid_token'}),
-            status=400,
+            status=401,
             content_type='application/json'
         )
     except Exception as e:
@@ -77,37 +108,43 @@ def AddFriend(request):
             status=500,
             content_type='application/json'
         )
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def Friendslist(request):
-    logger = logging.getLogger(__name__)
-    auth_header = request.headers.get('Authorization').split()[1]
-    decoded = jwt.decode(auth_header, settings.SECRET_KEY, algorithms=["HS256"])
-    # logger.error("test" + decoded)
-    logger.error('BEGIN!!!!!!!!')
-    logger.error(decoded)
-    logger.error('END!!!!!!!!')
-    user_id = decoded['user_id']    
-    if not user_id:
-        return HttpResponse(json.dumps({'detail': 'User ID not found in token', 'code': 'user_id_not_found'}), status=400, content_type='application/json')
-    friend_ids = list(Friends.objects.filter(user_id=decoded['user_id']).values_list('friend_id', flat=True))
-    if not friend_ids:
-        return HttpResponse(json.dumps({'detail': 'no friends found', 'code': 'friends_not_found'}), status=400, content_type='application/json')
-    return HttpResponse(json.dumps(friend_ids), status=200, content_type='application/json')
 
-# @csrf_exempt
-# @api_view(['DELETE'])
+
 @permission_classes([IsAuthenticated])
-def RemoveFriend(request):
-    # Extract 'id' from query parameters
-    auth_header = request.headers.get('Authorization').split()[1]
-    decoded = jwt.decode(auth_header, settings.SECRET_KEY, algorithms=["HS256"])
-    friend_id = request.query_params.get('id')
-    if not friend_id:
-        return HttpResponse(json.dumps({'error': 'Friend ID is required'}), status=400, content_type='application/json')
-    # Delete the friend relationship
-    deleted, _ = Friends.objects.filter(user_id=request.decode['user_id'], friend_id=friend_id).delete()
-    if deleted:
-        return HttpResponse(json.dumps({'message': 'Friend removed successfully'}), status=200, content_type='application/json')
-    else:
-        return HttpResponse(json.dumps({'error': 'Friend not found'}), status=404, content_type='application/json')
+@ensure_csrf_cookie
+def friends_list(request):
+    if request.method != 'GET':
+        return HttpResponse(
+            json.dumps({'detail': 'Method not allowed', 'code': 'method_not_allowed'}),
+            status=405,
+            content_type='application/json'
+        )
+    try :
+        logger = logging.getLogger(__name__)
+        auth_header = request.headers.get('Authorization').split()[1]
+        decoded = jwt.decode(auth_header, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded['user_id']    
+        user_id = decoded.get('user_id')
+        if not user_id:
+            return JsonResponse({'detail': 'User ID not found in token', 'code': 'user_id_not_found'}, status=400)
+        friend_ids = list(Friends.objects.filter(user_id=user_id).values_list('friend_id', flat=True))
+        return HttpResponse(json.dumps({"friends": friend_ids}), status=200, content_type='application/json')
+    except jwt.ExpiredSignatureError:
+        return HttpResponse(
+            json.dumps({'detail': 'Token has expired', 'code': 'token_expired'}),
+            status=401,
+            content_type='application/json'
+        )
+    except jwt.InvalidTokenError:
+        return HttpResponse(
+            json.dumps({'detail': 'Invalid token', 'code': 'invalid_token'}),
+            status=401,
+            content_type='application/json'
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return HttpResponse(
+            json.dumps({'detail': 'An error occurred', 'code': 'error_occurred'}),
+            status=500,
+            content_type='application/json'
+        )
