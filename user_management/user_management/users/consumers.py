@@ -41,7 +41,7 @@ class OnlineStatusConsumer(WebsocketConsumer):
         
         if self.user:
             # Use Redis to store the user's online status.
-            redis_client = redis.StrictRedis(host='redis', port=6379, db=0)
+            redis_client = redis.StrictRedis(host='redis', port=6379, db=1)
             key = f"user:{self.user.id}:online"
             value = "1"
             redis_client.set(key, value, ex=300)  # Expire in 5 mins
@@ -51,6 +51,6 @@ class OnlineStatusConsumer(WebsocketConsumer):
     def disconnect(self, close_code):
         # Called when the WebSocket connection is closed.
         if self.user and self.user.is_authenticated:
-            redis_client = redis.StrictRedis(host='redis', port=6379, db=0)
+            redis_client = redis.StrictRedis(host='redis', port=6379, db=1)
             redis_client.delete(f"user:{self.user.id}:online")
             print_redis_content()

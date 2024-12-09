@@ -1,5 +1,5 @@
 import json
-import redis
+import redis.asyncio as redis
 from channels.generic.websocket import AsyncWebsocketConsumer
 import logging
 import asyncio
@@ -45,8 +45,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
             
-            redis_client.hset('global', self.user_id, self.nickname)  # Add user to global hash with nickname
+            await redis_client.hset('global', self.user_id, self.nickname)  # Add user to global hash with nickname
             await self.accept()
+
+            # Start listening to Redis messages
+            asyncio.create_task(self.listen_to_redis())
         else:
             self.group_name = None
             await self.close()
@@ -74,7 +77,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
         if self.user_id is not None:
-            redis_client.hdel('global', self.user_id)  # Remove user from global hash
+            await redis_client.hdel('global', self.user_id)  # Remove user from global hash
 
     async def receive(self, text_data):
         data = json.loads(text_data)
@@ -123,3 +126,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'sender': event['sender'],
             }))
             await asyncio.sleep(0.2)
+    
+
+    async def listen_to_redis(self):
+        pubsub = redis_client.pubsub()
+        await pubsub.subscribe('global_chat')
+
+        async for message in pubsub.listen():
+            if message['type'] == 'message':
+                data = json.loads(message['data'])
+                await self.chat_message(data)

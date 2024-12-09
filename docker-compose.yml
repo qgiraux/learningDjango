@@ -41,24 +41,9 @@ services:
       dockerfile: chat/Dockerfile
     volumes:
       - ./chat:/workspace/chat
-    depends_on:
-      - db_chat
     networks:
       - transcendence
     init: true
-
-  db_chat:
-    container_name: db_chat
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: django
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-django}
-      POSTGRES_DB: db_chat
-    volumes:
-      - postgres_chat:/var/lib/postgresql/data
-    networks:
-      - transcendence
 
   friends_list:
     image: friends_list
@@ -95,6 +80,18 @@ services:
     networks:
       - transcendence
 
+  tournament:
+    image: tournament
+    container_name: tournament
+    build:
+      context: .
+      dockerfile: tournament/Dockerfile
+    volumes:
+      - ./tournament:/workspace/tournament
+    networks:
+      - transcendence
+    init: true
+    
   nginx:
     container_name: nginx
     image: nginx
@@ -114,5 +111,4 @@ services:
 
 volumes:
   postgres_user_management:
-  postgres_chat:
   postgres_friends_list:
