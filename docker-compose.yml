@@ -79,18 +79,6 @@ services:
     restart: always
     networks:
       - transcendence
-
-  tournament:
-    image: tournament
-    container_name: tournament
-    build:
-      context: .
-      dockerfile: tournament/Dockerfile
-    volumes:
-      - ./tournament:/workspace/tournament
-    networks:
-      - transcendence
-    init: true
     
   nginx:
     container_name: nginx
