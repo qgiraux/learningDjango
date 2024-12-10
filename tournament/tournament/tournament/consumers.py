@@ -12,7 +12,7 @@ redis_client = redis.StrictRedis(host='redis', port=6379, db=0)
 
 logger = logging.getLogger(__name__)
 
-class ChatConsumer(AsyncWebsocketConsumer):
+class tournamentConsumer(AsyncWebsocketConsumer):
     channels = []
 
     async def connect(self):
@@ -50,17 +50,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
             logger.error(self.group_name)
             await self.channel_layer.group_add(
-                'global_chat',
+                'global_tournament',
                 self.channel_name
             )
             
             # Add user to the global Redis hash with nickname
-            # await redis_client.hset('global_chat', self.user_id, self.nickname)  
+            # await redis_client.hset('global_tournament', self.user_id, self.nickname)  
             await self.accept()
 
-            # Start listening to Redis messages (subscribe to the global chat and user-specific channels)
+            # Start listening to Redis messages (subscribe to the global tournament and user-specific channels)
             self.add_channel(self.group_name)
-            self.add_channel('global_chat')
+            self.add_channel('global_tournament')
             if self.group_name:
                 self.channels.append(self.group_name)
             asyncio.create_task(self.listen_to_redis(self.channels))
@@ -99,16 +99,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """Handles incoming messages from WebSocket clients."""
         data = json.loads(text_data)
         message_type = data.get('type')
-        group = data.get('group', 'global_chat')
+        group = data.get('group', 'global_tournament')
         sender_name = self.nickname
 
         # Handle different message types
-        if message_type == 'chat':
-            # Send the message to the global chat group
+        if message_type == 'tournament':
+            # Send the message to the global tournament group
             await self.channel_layer.group_send(
                 group,
                 {
-                    'type': 'chat_message',
+                    'type': 'tournament_message',
                     'message': data['message'],
                     'sender': sender_name,
                     'group': group,
@@ -140,17 +140,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 logger.info(f"User {self.nickname} subscribed to {channel_name}")
 
-    async def chat_message(self, event):
-        """Send the chat message to the WebSocket."""
+    async def tournament_message(self, event):
+        """Send the tournament message to the WebSocket."""
         await self.send(text_data=json.dumps({
-            'type': 'chat',
+            'type': 'tournament',
             'message': event['message'],
             'group': event['group'],
             'sender': event['sender'],
         }))
     
     async def notification_message(self, event):
-        """Send the chat message to the WebSocket."""
+        """Send the tournament message to the WebSocket."""
         await self.send(text_data=json.dumps({
             'type': 'notification',
             'message': event['message'],
@@ -160,35 +160,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def listen_to_redis(self, channels):
         """Listen for messages from Redis and forward to WebSocket."""
-        redis_client = redis.from_url('redis://redis')
+        redis_client = redis.from_url('redis://localhost')
         try:
             pubsub = redis_client.pubsub()
             await pubsub.subscribe(*channels)
             async for message in pubsub.listen():
                 if message['type'] == 'message':
-                    try:
-                        data = json.loads(message['data'])
-                        logger.info(f"Received Redis message: {data}")
-                        # Send the message to the appropriate WebSocket group
-                        await self.channel_layer.group_send(
-                            data['group'],
-                            {
-                                'type': 'chat_message',
-                                'message': data['message'],
-                                'sender': data['sender'],
-                                'group': data['group'],
-                            }
-                        )
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to decode JSON message: {e}")
-                    except KeyError as e:
-                        logger.error(f"Missing key in message data: {e}")
-                    except Exception as e:
-                        logger.error(f"Error sending message to WebSocket group: {e}")
-        except redis.ConnectionError as e:
-            logger.error(f"Redis connection error: {e}")
-        except Exception as e:
-            logger.error(f"Error subscribing to Redis channels: {e}")
+                    data = json.loads(message['data'])
+                    logger.info(f"Received Redis message: {data}")
+                    # Send the message to the appropriate WebSocket group
+                    await self.channel_layer.group_send(
+                        data['group'],
+                        {
+                            'type': 'tournament_message',
+                            'message': data['message'],
+                            'sender': data['sender'],
+                            'group': data['group'],
+                        }
+                    )
         finally:
             await redis_client.close()
 

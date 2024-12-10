@@ -21,12 +21,7 @@ class TestView(APIView):
 
         # Get the channel layer
         channel_layer = get_channel_layer()
-        
-        async_to_sync(channel_layer.group_add)(
-            "newgroup",  # Group name
-            "user_1"  # User-specific channel name
-        )
-        
+
         # Send the message to the group
         async_to_sync(channel_layer.group_send)(
             'user_1',  # Group name
